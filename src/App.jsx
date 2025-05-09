@@ -1,8 +1,10 @@
-import { useEffect, useReducer } from "react";
-import { deleteById, getData } from "./request";
+import { useEffect, useReducer, useState } from "react";
+import { addData, deleteById, getData } from "./request";
 import Main from "./components/Main";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "./components/ui/button";
+import Header from "./components/Header";
+import Modal from "./components/Modal";
 
 const initialSteate = {
   data: [],
@@ -11,6 +13,7 @@ const initialSteate = {
   buttonClicked: null,
   skip: 0,
   limit: 10,
+  add: {},
 };
 
 function reduser(state, action) {
@@ -29,11 +32,15 @@ function reduser(state, action) {
 
     case "SKIP_CLICKED":
       return { ...state, skip: state.skip + state.limit };
+
+    case "ADD_TODO":
+      return { ...state, data: [action.payload, ...state.data] };
   }
   return state;
 }
 export default function App() {
   const [state, dispach] = useReducer(reduser, initialSteate);
+  const [modal, setmodal] = useState(false);
   useEffect(() => {
     dispach({ type: "FETCH_START" });
     getData(state.skip, state.limit)
@@ -83,7 +90,26 @@ export default function App() {
   }
   return (
     <div>
+      <Header onAddClick={() => setmodal(true)} />
       <div className=" container mx-auto p-4">
+        {modal && (
+          <Modal
+            onClose={() => setmodal(false)}
+            onSubmit={(newTodo) => {
+              addData(newTodo)
+                .then((res) => {
+                  dispach({ type: "ADD_ITEM", payload: res });
+                  setmodal(false);
+                })
+                .catch((err) => {
+                  console.log(err);
+                });
+            }}
+          />
+        )}
+        {state.error && <p>{state.error}</p>}
+        <Main data={state} dispach={dispach} />
+
         {state.loading && (
           <div className="flex flex-col gap-4">
             {Array.from({ length: 4 }).map((_, index) => {
@@ -96,9 +122,6 @@ export default function App() {
             })}
           </div>
         )}
-        {state.error && <p>{state.error}</p>}
-        <Main data={state} dispach={dispach} />
-
         <div className="flex items-center justify-center mt-5 mb-5">
           <Button onClick={() => handleSkip()}>Ko'proq malumot</Button>
         </div>
